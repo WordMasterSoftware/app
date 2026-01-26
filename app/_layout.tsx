@@ -1,11 +1,13 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter, Segments } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import 'react-native-reanimated';
 import useAuthStore from '../stores/useAuthStore';
+import useConfigStore from '../stores/useConfigStore';
 
 import { useColorScheme } from '@/components/useColorScheme';
 
@@ -49,27 +51,58 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const { loadToken, isAuthenticated } = useAuthStore();
-  const segments = useRouter().segments as string[];
+  const { isConfigured } = useConfigStore();
+  const segments = useSegments();
   const router = useRouter();
+  const [isReady, setIsReady] = useState(false);
 
-  // Load token on mount
+  // Initialization Effect
   useEffect(() => {
-    loadToken();
+    const initApp = async () => {
+      try {
+        await loadToken();
+      } catch (e) {
+        console.error('Failed to load token', e);
+      } finally {
+        setIsReady(true);
+      }
+    };
+    initApp();
   }, []);
 
+  // Auth Guard Effect
   useEffect(() => {
-    // Simple auth guard
-    // If not authenticated and not in auth group, redirect to login
-    // We need to wait for token load (isAuthenticated default is false, but we load token async)
-    // Ideally we need an 'isInitialized' state. For now, this is a basic check.
+    if (!isReady) return;
 
-    // Note: In a real app, use a proper Loading state for auth check
+    // Check if segments are available
+    if (!segments) return;
 
-    // const inAuthGroup = segments[0] === 'auth';
-    // if (!isAuthenticated && !inAuthGroup) {
-      // router.replace('/auth/login');
-    // }
-  }, [isAuthenticated, segments]);
+    const inAuthGroup = segments[0] === 'auth';
+
+    if (!isConfigured) {
+      if (segments[1] !== 'config') {
+        router.replace('/auth/config');
+      }
+    } else if (!isAuthenticated) {
+      if (!inAuthGroup) {
+        router.replace('/auth/login');
+      } else if (segments[1] !== 'login' && segments[1] !== 'register' && segments[1] !== 'config') {
+        router.replace('/auth/login');
+      }
+    } else {
+      if (inAuthGroup && segments[1] !== 'config') {
+         router.replace('/(tabs)');
+      }
+    }
+  }, [isReady, isConfigured, isAuthenticated, segments]);
+
+  if (!isReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colorScheme === 'dark' ? '#000' : '#fff' }}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </View>
+    );
+  }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -32,82 +32,45 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       const response = await authApi.login({ account, password });
-
-      // Response structure from API: { success: true, data: { token, user_id, ... } }
-      // Based on CLAUDE.md: Returns: { "success": true, "data": { "token": "...", "user_id": "..." } }
-      // But my authApi returns response.data directly because of interceptor?
-      // client.ts interceptor returns response.data.
-      // So response is the body.
-      // Wait, web Login.jsx does: login(response.data).
-      // Let's check CLAUDE.md again.
-      // "Returns: { "success": true, "data": { "token": "...", "user_id": "..." } }"
-      // If client.ts returns response.data, then `response` IS that object.
-      // We need to pass the inner data to login store if that's what it expects?
-      // useAuthStore.ts: login(token, user).
-      // We need to fetch user profile or if it's included.
-      // Standard flow: Login -> Get Token -> Get Me (if user info not in login response)
-      // Or login response has it.
-      // Let's assume response.data contains token and user info or we fetch me.
-      // Web Login.jsx: login(response.data)
-      // Let's look at web useAuthStore... I didn't read it fully but I implemented a new one for App.
-      // App useAuthStore expects (token, user).
-
-      const { data } = response as any; // { token, user: {...} } or similar
-      // If the backend returns just token and user_id, we might need to fetch user details.
-      // Let's try to fetch user details immediately.
-
-      const token = data.token;
-
-      // Manually set token in store/storage temporarily or use a helper
-      // But useAuthStore.login takes token and user.
-
-      // Let's do a quick hack: use the token to fetch user
-      // But we can't use apiClient easily without token in store.
-      // Actually client.ts reads from store.
-
-      // Let's just pass what we have if possible, or:
-      // 1. Store token
-      // 2. Fetch user
-
-      // For now, let's assume data contains user object or we mock it,
-      // but safely we should probably implement `login` to take just token and then fetch user?
-      // No, let's stick to the store interface I wrote: login(token, user).
-
-      // If the login response doesn't have full user info, we might need to change the store.
-      // Let's try to fetch 'me' after getting token.
-      // We can directly call apiClient with header.
-
-      // For now, I'll assume the login response has user info to match Web's `login(response.data)`.
-
-      await login(token, data.user || { id: data.user_id, username: account, email: '' });
-      // Fallback if user object is missing
-
+      const { data } = response as any;
+      await login(data.token, data.user || { id: data.user_id, username: account, email: '' });
       router.replace('/(tabs)');
     } catch (error: any) {
       const msg = error.response?.data?.message || '登录失败，请检查账号密码';
-      Alert.alert('登录失败', msg);
+      // In a real app we might use toast, here we rely on error state or alert
+      // Alert.alert('登录失败', msg); // Removed alert for cleaner UX, can use error text
+      setErrors({ ...errors, password: msg }); // Simple feedback
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-950">
-      <ScrollView contentContainerClassName="flex-grow justify-center p-6">
-        <View className="max-w-md w-full mx-auto">
-          <Card>
-            {/* Header */}
-            <View className="items-center mb-8">
-              <Text className="text-3xl font-bold text-gray-900 dark:text-white">
+    <View className="flex-1 bg-white dark:bg-slate-950">
+      {/* 1. Top Blue Background */}
+      <View className="absolute top-0 left-0 right-0 h-[45%] bg-blue-600" />
+
+      <SafeAreaView className="flex-1">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          className="flex-1"
+        >
+          <ScrollView
+            contentContainerClassName="flex-grow justify-center px-6"
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Header Content */}
+            <View className="items-center mb-8 mt-20">
+              <Text className="text-3xl font-bold text-white mb-2 tracking-wide">
                 欢迎回来
               </Text>
-              <Text className="text-gray-500 dark:text-gray-400 mt-2">
-                登录到 WordMaster
+              <Text className="text-blue-100 text-center text-base px-8 opacity-90">
+                登录 WordMaster 继续学习
               </Text>
             </View>
 
-            {/* Form */}
-            <View className="space-y-4">
+            {/* Overlapping Card */}
+            <View className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl shadow-blue-900/10 mb-6">
               <Input
                 label="用户名或邮箱"
                 placeholder="请输入用户名或邮箱"
@@ -116,6 +79,7 @@ export default function LoginScreen() {
                 error={errors.account}
                 autoCapitalize="none"
                 prefix={<FontAwesome name="user-o" size={18} color="#9ca3af" />}
+                containerClassName="mb-4"
               />
 
               <Input
@@ -126,45 +90,45 @@ export default function LoginScreen() {
                 error={errors.password}
                 secureTextEntry
                 prefix={<FontAwesome name="lock" size={20} color="#9ca3af" />}
+                containerClassName="mb-6"
               />
 
               <Button
                 variant="primary"
                 fullWidth
+                size="lg"
                 loading={isLoading}
                 onPress={handleSubmit}
-                className="mt-2"
+                className="shadow-md shadow-blue-500/30"
               >
                 登录
               </Button>
-            </View>
 
-            {/* Footer */}
-            <View className="mt-6 items-center space-y-3">
-              <View className="flex-row">
-                <Text className="text-gray-600 dark:text-gray-400">
-                  还没有账号？{' '}
-                </Text>
+              <View className="flex-row justify-center mt-6 space-x-1">
+                <Text className="text-gray-500">还没有账号？</Text>
                 <Link href="/auth/register" asChild>
                   <TouchableOpacity>
-                    <Text className="text-blue-600 dark:text-blue-400 font-medium">
-                      立即注册
-                    </Text>
+                    <Text className="text-blue-600 font-bold">立即注册</Text>
                   </TouchableOpacity>
                 </Link>
               </View>
+            </View>
 
+            {/* Bottom Config Link */}
+            <View className="flex-row justify-center mt-4">
               <Link href="/auth/config" asChild>
-                <TouchableOpacity>
-                  <Text className="text-gray-500 dark:text-gray-500 text-sm">
+                <TouchableOpacity className="flex-row items-center bg-gray-50 dark:bg-slate-800 px-4 py-2 rounded-full border border-gray-100 dark:border-gray-700">
+                  <FontAwesome name="cog" size={14} color="#6b7280" className="mr-2" />
+                  <Text className="text-xs text-gray-500 dark:text-gray-400">
                     配置后端地址
                   </Text>
                 </TouchableOpacity>
               </Link>
             </View>
-          </Card>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }

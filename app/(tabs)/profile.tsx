@@ -1,11 +1,9 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import useAuthStore from '@/stores/useAuthStore';
-import Card from '@/components/common/Card';
-import Button from '@/components/common/Button';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
@@ -25,105 +23,133 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleOpenGithub = () => {
+    Linking.openURL('https://github.com/WordMasterSoftware/WordMaster');
+  };
+
   const menuGroups = [
     {
       title: '设置',
       items: [
-        { icon: 'sliders', label: 'LLM 模型配置', action: () => {} },
-        { icon: 'server', label: '后端地址配置', action: () => router.push('/auth/config') },
-        { icon: 'bell-o', label: '提醒设置', action: () => {} },
+        {
+          icon: 'sliders',
+          label: 'LLM 模型配置',
+          action: () => Alert.alert('提示', '功能开发中')
+        },
+        {
+          icon: 'server',
+          label: '后端地址配置',
+          action: () => router.push('/auth/config')
+        },
+        {
+          icon: 'bell-o',
+          label: '提醒设置',
+          action: () => Alert.alert('提示', '功能开发中')
+        },
       ]
     },
     {
       title: '关于',
       items: [
-        { icon: 'info-circle', label: '关于 WordMaster', action: () => {} },
-        { icon: 'github', label: 'GitHub 仓库', action: () => {} },
+        {
+          icon: 'github',
+          label: 'GitHub 仓库',
+          action: handleOpenGithub
+        },
+        {
+          icon: 'info-circle',
+          label: '关于 WordMaster',
+          action: () => Alert.alert('关于', 'WordMaster v1.0.0\n\n一款基于 AI 的智能背单词应用。')
+        },
       ]
     }
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-950">
-      <ScrollView contentContainerClassName="pb-10">
-        {/* Profile Header */}
-        <View className="bg-white dark:bg-slate-900 px-6 py-8 mb-6 border-b border-gray-200 dark:border-gray-800">
-          <View className="flex-row items-center">
-            <View className="w-20 h-20 bg-blue-100 dark:bg-blue-900 rounded-full items-center justify-center mr-4">
-              <Text className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                {user?.nickname?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase() || 'U'}
-              </Text>
+    // 1. Root Container: Background color for the "Gap" area (Gray)
+    <View className="flex-1 bg-gray-100 dark:bg-black">
+
+      {/* 2. UPPER SECTION: Fixed Header */}
+      <View className="bg-blue-600 rounded-b-[40px] pb-8 shadow-xl z-20">
+        <SafeAreaView edges={['top', 'left', 'right']}>
+          <View className="items-center px-6 pt-2">
+            {/* Avatar Container */}
+            <View className="w-24 h-24 bg-white/20 rounded-full p-1 mb-3 border-2 border-white/30 backdrop-blur-md">
+              <View className="flex-1 bg-white dark:bg-slate-800 rounded-full items-center justify-center overflow-hidden">
+                {user?.avatar_url ? (
+                  <Text className="text-4xl">👤</Text>
+                ) : (
+                  <Text className="text-4xl font-bold text-blue-600 dark:text-blue-400">
+                    {user?.nickname?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase() || 'U'}
+                  </Text>
+                )}
+              </View>
             </View>
-            <View>
-              <Text className="text-2xl font-bold text-gray-900 dark:text-white">
-                {user?.nickname || 'User'}
-              </Text>
-              <Text className="text-gray-500 dark:text-gray-400 mt-1">
+
+            {/* User Info */}
+            <Text className="text-2xl font-bold text-white mb-2 shadow-sm tracking-wide">
+              {user?.nickname || 'User'}
+            </Text>
+            <View className="bg-blue-700/40 px-4 py-1.5 rounded-full border border-blue-400/20">
+              <Text className="text-blue-50 font-medium text-xs">
                 {user?.email || user?.username || 'user@example.com'}
               </Text>
             </View>
           </View>
-        </View>
+        </SafeAreaView>
+      </View>
 
-        {/* Stats Summary */}
-        <View className="px-4 mb-6">
-          <Card className="flex-row justify-around py-4">
-             <View className="items-center">
-               <Text className="text-xl font-bold text-gray-900 dark:text-white">0</Text>
-               <Text className="text-xs text-gray-500">累计天数</Text>
-             </View>
-             <View className="w-[1px] bg-gray-200 dark:bg-gray-700 h-full" />
-             <View className="items-center">
-               <Text className="text-xl font-bold text-gray-900 dark:text-white">0</Text>
-               <Text className="text-xs text-gray-500">已学单词</Text>
-             </View>
-             <View className="w-[1px] bg-gray-200 dark:bg-gray-700 h-full" />
-             <View className="items-center">
-               <Text className="text-xl font-bold text-gray-900 dark:text-white">0</Text>
-               <Text className="text-xs text-gray-500">掌握词汇</Text>
-             </View>
-          </Card>
-        </View>
+      {/* 3. LOWER SECTION: Scrollable Content Container */}
+      <View className="flex-1 mt-4 bg-white dark:bg-slate-900 rounded-t-[32px] overflow-hidden shadow-sm border-t border-gray-100 dark:border-gray-800">
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="px-6 pt-10 pb-40"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Menu Groups */}
+          <View className="space-y-8">
+            {menuGroups.map((group, groupIndex) => (
+              <View key={groupIndex}>
+                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-4 ml-4 uppercase tracking-widest">
+                  {group.title}
+                </Text>
+                <View className="bg-gray-50 dark:bg-slate-800/50 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800">
+                  {group.items.map((item, index) => (
+                    <View key={index}>
+                      <TouchableOpacity
+                        className="flex-row items-center px-5 py-4 active:bg-gray-100 dark:active:bg-slate-800"
+                        onPress={item.action}
+                      >
+                        <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-4 ${index % 2 === 0 ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-indigo-100 dark:bg-indigo-900/30'}`}>
+                          <FontAwesome name={item.icon as any} size={18} color="#3b82f6" />
+                        </View>
+                        <Text className="flex-1 text-base font-semibold text-gray-800 dark:text-gray-100">
+                          {item.label}
+                        </Text>
+                        <FontAwesome name="chevron-right" size={12} color="#d1d5db" />
+                      </TouchableOpacity>
+                      {index < group.items.length - 1 && (
+                        <View className="h-[1px] bg-gray-200/50 dark:bg-gray-700/50 ml-20" />
+                      )}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))}
 
-        {/* Menu Items */}
-        <View className="px-4 space-y-6">
-          {menuGroups.map((group, groupIndex) => (
-            <View key={groupIndex}>
-              <Text className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2 ml-2">
-                {group.title}
-              </Text>
-              <Card className="overflow-hidden p-0">
-                {group.items.map((item, index) => (
-                  <View key={index}>
-                    <TouchableOpacity
-                      className="flex-row items-center px-4 py-4 active:bg-gray-50 dark:active:bg-slate-800"
-                      onPress={item.action}
-                    >
-                      <View className="w-8 items-center mr-3">
-                        <FontAwesome name={item.icon as any} size={20} color="#6b7280" />
-                      </View>
-                      <Text className="flex-1 text-base text-gray-900 dark:text-white">
-                        {item.label}
-                      </Text>
-                      <FontAwesome name="angle-right" size={16} color="#d1d5db" />
-                    </TouchableOpacity>
-                    {index < group.items.length - 1 && (
-                      <View className="h-[1px] bg-gray-100 dark:bg-gray-800 ml-12" />
-                    )}
-                  </View>
-                ))}
-              </Card>
+            <TouchableOpacity
+              onPress={handleLogout}
+              className="mt-6 bg-red-50 dark:bg-red-900/10 py-4 rounded-3xl border border-red-100 dark:border-red-900/30 items-center justify-center active:bg-red-100"
+            >
+              <Text className="text-red-600 font-bold text-base">退出登录</Text>
+            </TouchableOpacity>
+
+            <View className="items-center mt-8">
+              <Text className="text-xs text-gray-300 dark:text-gray-600">WordMaster v1.0.0</Text>
             </View>
-          ))}
-
-          <Button
-            variant="danger"
-            className="mt-4"
-            onPress={handleLogout}
-            label="退出登录"
-          />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          </View>
+        </ScrollView>
+      </View>
+    </View>
   );
 }

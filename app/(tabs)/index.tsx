@@ -66,7 +66,7 @@ export default function HomeScreen() {
   const actions = [
     { icon: 'book', label: '开始学习', color: 'bg-blue-500', route: '/(tabs)/study' },
     { icon: 'refresh', label: '复习巩固', color: 'bg-blue-400', route: '/(tabs)/review' },
-    { icon: 'shopping-cart', label: '单词市场', color: 'bg-indigo-400', route: '/(tabs)/study' },
+    { icon: 'shopping-cart', label: '单词市场', color: 'bg-indigo-400', route: '/market' },
     { icon: 'envelope', label: '消息中心', color: 'bg-orange-400', route: '/messages' },
   ];
 

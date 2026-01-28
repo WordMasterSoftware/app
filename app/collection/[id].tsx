@@ -175,9 +175,9 @@ export default function CollectionDetailScreen() {
 
           <View className="space-y-3">
             {words.length > 0 ? (
-              words.map((word) => (
+              words.map((word, index) => (
                 <View
-                  key={word.id}
+                  key={word.id || index}
                   className="flex-row items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-gray-800"
                 >
                   <View>

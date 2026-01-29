@@ -59,7 +59,7 @@ export default function ProfileScreen() {
         {
           icon: 'info-circle',
           label: '关于 WordMaster',
-          action: () => Alert.alert('关于', 'WordMaster v1.0.0\n\n一款基于 AI 的智能背单词应用。')
+          action: () => Alert.alert('关于', 'WordMaster v1.2.0\n\n一款由 AI 驱动的跨平台开源新型背单词应用。')
         },
       ]
     }
@@ -103,14 +103,14 @@ export default function ProfileScreen() {
       <View className="flex-1 mt-4 bg-white dark:bg-slate-900 rounded-t-[32px] overflow-hidden shadow-sm border-t border-gray-100 dark:border-gray-800">
         <ScrollView
           className="flex-1"
-          contentContainerClassName="px-6 pt-10 pb-40"
+          contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 4, paddingBottom: 160 }}
           showsVerticalScrollIndicator={false}
         >
           {/* Menu Groups */}
           <View className="space-y-8">
             {menuGroups.map((group, groupIndex) => (
               <View key={groupIndex}>
-                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 mb-4 ml-4 uppercase tracking-widest">
+                <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 mt-6 mb-4 ml-4 uppercase tracking-widest">
                   {group.title}
                 </Text>
                 <View className="bg-gray-50 dark:bg-slate-800/50 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800">
@@ -145,7 +145,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             <View className="items-center mt-8">
-              <Text className="text-xs text-gray-300 dark:text-gray-600">WordMaster v1.0.0</Text>
+              <Text className="text-xs text-gray-300 dark:text-gray-600">WordMaster v1.2.0</Text>
             </View>
           </View>
         </ScrollView>

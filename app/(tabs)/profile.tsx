@@ -1,21 +1,36 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Linking, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import useAuthStore from '@/stores/useAuthStore';
+import CustomAlert, { AlertButton } from '@/components/common/CustomAlert';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
   const router = useRouter();
 
+  // Custom Alert State
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message?: string;
+    buttons?: AlertButton[];
+  }>({ title: '' });
+
+  const showAlert = (title: string, message?: string, buttons?: AlertButton[]) => {
+    setAlertConfig({ title, message, buttons });
+    setAlertVisible(true);
+  };
+
   const handleLogout = async () => {
-    Alert.alert('退出登录', '确定要退出登录吗？', [
-      { text: '取消', style: 'cancel' },
+    showAlert('退出登录', '确定要退出登录吗？', [
+      { text: '取消', style: 'cancel', onPress: () => setAlertVisible(false) },
       {
         text: '退出',
         style: 'destructive',
         onPress: async () => {
+          setAlertVisible(false);
           await logout();
           router.replace('/auth/login');
         }
@@ -34,7 +49,7 @@ export default function ProfileScreen() {
         {
           icon: 'sliders',
           label: 'LLM 模型配置',
-          action: () => Alert.alert('提示', '功能开发中')
+          action: () => showAlert('提示', '功能开发中', [{ text: '好的', onPress: () => setAlertVisible(false) }])
         },
         {
           icon: 'server',
@@ -44,7 +59,7 @@ export default function ProfileScreen() {
         {
           icon: 'bell-o',
           label: '提醒设置',
-          action: () => Alert.alert('提示', '功能开发中')
+          action: () => showAlert('提示', '功能开发中', [{ text: '好的', onPress: () => setAlertVisible(false) }])
         },
       ]
     },
@@ -59,7 +74,7 @@ export default function ProfileScreen() {
         {
           icon: 'info-circle',
           label: '关于 WordMaster',
-          action: () => Alert.alert('关于', 'WordMaster v1.2.0\n\n一款由 AI 驱动的跨平台开源新型背单词应用。')
+          action: () => showAlert('关于', 'WordMaster v1.2.0\n\n一款由 AI 驱动的跨平台开源新型背单词应用。', [{ text: '关闭', onPress: () => setAlertVisible(false) }])
         },
       ]
     }
@@ -68,6 +83,13 @@ export default function ProfileScreen() {
   return (
     // 1. Root Container: Background color for the "Gap" area (Gray)
     <View className="flex-1 bg-gray-100 dark:bg-black">
+      <CustomAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onClose={() => setAlertVisible(false)}
+      />
 
       {/* 2. UPPER SECTION: Fixed Header */}
       <View className="bg-blue-600 rounded-b-[40px] pb-8 shadow-xl z-20">
@@ -118,7 +140,9 @@ export default function ProfileScreen() {
                     <View key={index}>
                       <TouchableOpacity
                         className="flex-row items-center px-5 py-4 active:bg-gray-100 dark:active:bg-slate-800"
-                        onPress={item.action}
+                        onPress={item.type === 'switch' ? item.action : item.action}
+                        disabled={item.type === 'switch'} // Let Switch handle the interaction or handle it via Row press if preferred.
+                        // Better to let Row press trigger toggle for larger tap area
                       >
                         <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-4 ${index % 2 === 0 ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-indigo-100 dark:bg-indigo-900/30'}`}>
                           <FontAwesome name={item.icon as any} size={18} color="#3b82f6" />
@@ -126,7 +150,18 @@ export default function ProfileScreen() {
                         <Text className="flex-1 text-base font-semibold text-gray-800 dark:text-gray-100">
                           {item.label}
                         </Text>
-                        <FontAwesome name="chevron-right" size={12} color="#d1d5db" />
+
+                        {item.type === 'switch' ? (
+                          <Switch
+                            value={item.value}
+                            onValueChange={item.action}
+                            trackColor={{ false: '#767577', true: '#3b82f6' }}
+                            thumbColor={item.value ? '#ffffff' : '#f4f3f4'}
+                            ios_backgroundColor="#3e3e3e"
+                          />
+                        ) : (
+                          <FontAwesome name="chevron-right" size={12} color="#d1d5db" />
+                        )}
                       </TouchableOpacity>
                       {index < group.items.length - 1 && (
                         <View className="h-[1px] bg-gray-200/50 dark:bg-gray-700/50 ml-20" />

@@ -103,7 +103,7 @@ export default function ProfileScreen() {
       <View className="flex-1 mt-4 bg-white dark:bg-slate-900 rounded-t-[32px] overflow-hidden shadow-sm border-t border-gray-100 dark:border-gray-800">
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 4, paddingBottom: 160 }}
+          contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 4, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
         >
           {/* Menu Groups */}

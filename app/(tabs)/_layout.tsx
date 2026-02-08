@@ -7,7 +7,9 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming
+  withTiming,
+  FadeIn,
+  FadeOut
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -156,26 +158,38 @@ export default function TabLayout() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        // 页面切换动画配置 (仅 Android/iOS 原生栈有效，Expo Router Tabs 默认 fade)
-        // 注意：Tabs 本身不支持水平滑动切换页面，这里只能配置 TabBar 动画
-        animation: 'shift',
+        // 添加页面切换动画
+        animation: 'fade',
+        animationDuration: 200,
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: '首页' }}
+        options={{
+          title: '首页',
+          lazy: false, // 预加载页面，避免渲染延迟
+        }}
       />
       <Tabs.Screen
         name="study"
-        options={{ title: '单词本' }}
+        options={{
+          title: '单词本',
+          lazy: false,
+        }}
       />
       <Tabs.Screen
         name="review"
-        options={{ title: '复习' }}
+        options={{
+          title: '复习',
+          lazy: true, // 复习页面可以懒加载
+        }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: '我的' }}
+        options={{
+          title: '我的',
+          lazy: true,
+        }}
       />
     </Tabs>
   );

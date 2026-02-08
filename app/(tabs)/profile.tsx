@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Switch } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Linking, Switch, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
@@ -81,8 +81,7 @@ export default function ProfileScreen() {
   ];
 
   return (
-    // 1. Root Container: Background color for the "Gap" area (Gray)
-    <View className="flex-1 bg-gray-100 dark:bg-black">
+    <SafeAreaView className="flex-1 bg-gray-100 dark:bg-black" edges={['top']}>
       <CustomAlert
         visible={alertVisible}
         title={alertConfig.title}
@@ -91,10 +90,9 @@ export default function ProfileScreen() {
         onClose={() => setAlertVisible(false)}
       />
 
-      {/* 2. UPPER SECTION: Fixed Header */}
-      <View className="bg-blue-600 rounded-b-[40px] pb-8 shadow-xl z-20">
-        <SafeAreaView edges={['top', 'left', 'right']}>
-          <View className="items-center px-6 pt-2">
+      {/* Header Section */}
+      <View className="bg-blue-600 rounded-b-[40px] pb-8 shadow-xl">
+        <View className="items-center px-6 pt-2">
             {/* Avatar Container */}
             <View className="w-24 h-24 bg-white/20 rounded-full p-1 mb-3 border-2 border-white/30 backdrop-blur-md">
               <View className="flex-1 bg-white dark:bg-slate-800 rounded-full items-center justify-center overflow-hidden">
@@ -118,15 +116,19 @@ export default function ProfileScreen() {
               </Text>
             </View>
           </View>
-        </SafeAreaView>
       </View>
 
-      {/* 3. LOWER SECTION: Scrollable Content Container */}
+      {/* Scrollable Content Container */}
       <View className="flex-1 mt-4 bg-white dark:bg-slate-900 rounded-t-[32px] overflow-hidden shadow-sm border-t border-gray-100 dark:border-gray-800">
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 4, paddingBottom: 120 }}
+          contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 4, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          decelerationRate="normal"
+          bounces={true}
+          alwaysBounceVertical={true}
+          removeClippedSubviews={Platform.OS === 'android'}
         >
           {/* Menu Groups */}
           <View className="space-y-8">
@@ -185,6 +187,6 @@ export default function ProfileScreen() {
           </View>
         </ScrollView>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }

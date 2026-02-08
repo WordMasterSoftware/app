@@ -5,8 +5,8 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+import { ActivityIndicator, Animated, RefreshControl, FlatList, Text, TouchableOpacity, View, Platform } from 'react-native';
+import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function StudyScreen() {
@@ -237,56 +237,57 @@ export default function StudyScreen() {
     const isSelected = selectedIds.has(item.id);
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={() => handleCollectionPress(item.id)}
-        onLongPress={() => handleCollectionLongPress(item.id)}
-        delayLongPress={300}
-        className="mb-3"
-      >
-        <View className={`bg-white dark:bg-slate-800 rounded-2xl p-4 flex-row items-center border ${isSelected ? 'border-blue-500' : 'border-gray-100 dark:border-gray-800'}`}>
-          {editMode && (
-            <View className="mr-3">
-              <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300 dark:border-gray-600'}`}>
-                {isSelected && <FontAwesome name="check" size={12} color="white" />}
+      <View className="px-6 mb-3">
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => handleCollectionPress(item.id)}
+          onLongPress={() => handleCollectionLongPress(item.id)}
+          delayLongPress={300}
+        >
+          <View className={`bg-white dark:bg-slate-800 rounded-2xl p-4 flex-row items-center border ${isSelected ? 'border-blue-500' : 'border-gray-100 dark:border-gray-800'}`}>
+            {editMode && (
+              <View className="mr-3">
+                <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                  {isSelected && <FontAwesome name="check" size={12} color="white" />}
+                </View>
               </View>
+            )}
+
+            <View
+              className="w-12 h-12 rounded-xl items-center justify-center mr-3"
+              style={{ backgroundColor: `${item.color || '#3B82F6'}20` }}
+            >
+              <Text className="text-xl">{item.icon || '📘'}</Text>
             </View>
-          )}
 
-          <View
-            className="w-12 h-12 rounded-xl items-center justify-center mr-3"
-            style={{ backgroundColor: `${item.color || '#3B82F6'}20` }}
-          >
-            <Text className="text-xl">{item.icon || '📘'}</Text>
-          </View>
-
-          <View className="flex-1">
-            <Text className="text-base font-bold text-gray-900 dark:text-white mb-1" numberOfLines={1}>
-              {item.name}
-            </Text>
-            <View className="flex-row items-center">
-              <View className="flex-row items-center mr-3">
-                <FontAwesome name="book" size={10} color="#9ca3af" style={{ marginRight: 4 }} />
-                <Text className="text-xs text-gray-500 dark:text-gray-400">
-                  {item.word_count || 0} 词
-                </Text>
-              </View>
+            <View className="flex-1">
+              <Text className="text-base font-bold text-gray-900 dark:text-white mb-1" numberOfLines={1}>
+                {item.name}
+              </Text>
               <View className="flex-row items-center">
-                <FontAwesome name="clock-o" size={10} color="#9ca3af" style={{ marginRight: 4 }} />
-                <Text className="text-xs text-gray-500 dark:text-gray-400">
-                  {formatDate(item.created_at)}
-                </Text>
+                <View className="flex-row items-center mr-3">
+                  <FontAwesome name="book" size={10} color="#9ca3af" style={{ marginRight: 4 }} />
+                  <Text className="text-xs text-gray-500 dark:text-gray-400">
+                    {item.word_count || 0} 词
+                  </Text>
+                </View>
+                <View className="flex-row items-center">
+                  <FontAwesome name="clock-o" size={10} color="#9ca3af" style={{ marginRight: 4 }} />
+                  <Text className="text-xs text-gray-500 dark:text-gray-400">
+                    {formatDate(item.created_at)}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
 
-          {!editMode && (
-            <View className="items-center justify-center pl-2">
-              <FontAwesome name="angle-right" size={18} color="#D1D5DB" />
-            </View>
-          )}
-        </View>
-      </TouchableOpacity>
+            {!editMode && (
+              <View className="items-center justify-center pl-2">
+                <FontAwesome name="angle-right" size={18} color="#D1D5DB" />
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -360,137 +361,205 @@ export default function StudyScreen() {
     ) : null
   );
 
-  return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-950">
-      <CustomAlert
-        visible={alertVisible}
-        title={alertConfig.title}
-        message={alertConfig.message}
-        buttons={alertConfig.buttons}
-        onClose={() => setAlertVisible(false)}
-      />
+  const renderItemWrapper = ({ item }: { item: Collection }) => {
+    if (editMode) {
+      return renderItem({ item });
+    }
 
-      <ScrollView
-        className="flex-1"
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#3b82f6"
-            colors={['#3b82f6']}
-            enabled={!editMode}
-          />
-        }
+    return (
+      <Swipeable
+        ref={(ref) => {
+          if (ref) {
+            openSwipeableRefs.current.set(item.id, ref);
+          } else {
+            openSwipeableRefs.current.delete(item.id);
+          }
+        }}
+        renderRightActions={(progress) => renderRightActions(item.id, progress)}
+        overshootRight={false}
+        friction={2}
+        rightThreshold={40}
+        onSwipeableWillOpen={() => {
+          openSwipeableRefs.current.forEach((swipeableRef, key) => {
+            if (key !== item.id) {
+              swipeableRef?.close();
+            }
+          });
+        }}
       >
-        {/* Header Section */}
-        <View className="px-6 pt-6 pb-8">
-          <View className="flex-row justify-between items-start mb-2">
-            <View className="flex-1">
-              <Text className="text-3xl font-bold text-gray-900 dark:text-white">
-                单词本
-              </Text>
-              <Text className="text-base text-gray-500 dark:text-gray-400 mt-2">
-                {editMode ? '选择要管理的单词本' : '选择单词本开始学习'}
-              </Text>
-            </View>
+        {renderItem({ item })}
+      </Swipeable>
+    );
+  };
 
-            {editMode && (
-              <View className="items-end ml-4">
-                <View className="flex-row items-center space-x-2 mb-1">
-                  <TouchableOpacity
-                    onPress={handleBatchDelete}
-                    disabled={deleting || selectedIds.size === 0}
-                    className={`w-9 h-9 rounded-full items-center justify-center ${
-                      selectedIds.size === 0
-                        ? 'bg-gray-100 dark:bg-slate-800'
-                        : 'bg-red-500'
-                    }`}
-                  >
-                    {deleting ? (
-                      <ActivityIndicator size="small" color="white" />
-                    ) : (
-                      <FontAwesome name="trash-o" size={14} color={selectedIds.size === 0 ? '#9ca3af' : 'white'} />
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handleCancelEdit}
-                    className="w-9 h-9 bg-gray-100 dark:bg-slate-800 rounded-full items-center justify-center"
-                  >
-                    <FontAwesome name="close" size={14} color="#9ca3af" />
-                  </TouchableOpacity>
-                </View>
-                <Text className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  已选择 {selectedIds.size} 项
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-950" edges={['top']}>
+        <CustomAlert
+          visible={alertVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttons={alertConfig.buttons}
+          onClose={() => setAlertVisible(false)}
+        />
 
-        {/* Collections List */}
-        <View className="px-6">
-          {ListHeader()}
+        <FlatList
+          data={collections}
+          renderItem={renderItemWrapper}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          ListHeaderComponent={
+            <View>
+              {/* Header Section */}
+              <View className="px-6 pt-6 pb-4">
+                <View className="flex-row justify-between items-start mb-2">
+                  <View className="flex-1">
+                    <Text className="text-3xl font-bold text-gray-900 dark:text-white">
+                      单词本
+                    </Text>
+                    <Text className="text-base text-gray-500 dark:text-gray-400 mt-2">
+                      {editMode ? '选择要管理的单词本' : '选择单词本开始学习'}
+                    </Text>
+                  </View>
 
-          {isLoading && collections.length === 0 ? (
-            <View className="py-20 items-center">
-              <ActivityIndicator size="large" color="#3b82f6" />
-            </View>
-          ) : collections.length === 0 ? (
-            EmptyState()
-          ) : (
-            <>
-              {collections.map((item) => (
-                <React.Fragment key={item.id}>
-                  {editMode ? (
-                    renderItem({ item })
-                  ) : (
-                    <Swipeable
-                      ref={(ref) => {
-                        if (ref) {
-                          openSwipeableRefs.current.set(item.id, ref);
-                        } else {
-                          openSwipeableRefs.current.delete(item.id);
-                        }
-                      }}
-                      renderRightActions={(progress) => renderRightActions(item.id, progress)}
-                      overshootRight={false}
-                      onSwipeableWillOpen={() => {
-                        openSwipeableRefs.current.forEach((swipeableRef, key) => {
-                          if (key !== item.id) {
-                            swipeableRef?.close();
-                          }
-                        });
-                      }}
-                    >
-                      {renderItem({ item })}
-                    </Swipeable>
+                  {editMode && (
+                    <View className="items-end ml-4">
+                      <View className="flex-row items-center space-x-2 mb-1">
+                        <TouchableOpacity
+                          onPress={handleBatchDelete}
+                          disabled={deleting || selectedIds.size === 0}
+                          className={`w-9 h-9 rounded-full items-center justify-center ${
+                            selectedIds.size === 0
+                              ? 'bg-gray-100 dark:bg-slate-800'
+                              : 'bg-red-500'
+                          }`}
+                        >
+                          {deleting ? (
+                            <ActivityIndicator size="small" color="white" />
+                          ) : (
+                            <FontAwesome name="trash-o" size={14} color={selectedIds.size === 0 ? '#9ca3af' : 'white'} />
+                          )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={handleCancelEdit}
+                          className="w-9 h-9 bg-gray-100 dark:bg-slate-800 rounded-full items-center justify-center"
+                        >
+                          <FontAwesome name="close" size={14} color="#9ca3af" />
+                        </TouchableOpacity>
+                      </View>
+                      <Text className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        已选择 {selectedIds.size} 项
+                      </Text>
+                    </View>
                   )}
-                </React.Fragment>
-              ))}
+                </View>
+              </View>
+
+              {/* Collections List Header */}
+              <View className="px-6 mb-4">
+                {!editMode && (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={handleCreatePress}
+                    className="mb-5"
+                    style={{
+                      shadowColor: '#3B82F6',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 12,
+                      elevation: 6,
+                    }}
+                  >
+                    <LinearGradient
+                      colors={['#3B82F6', '#1D4ED8']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      className="rounded-2xl overflow-hidden"
+                    >
+                      <View className="p-4 flex-row items-center justify-center">
+                        <View className="w-10 h-10 rounded-xl bg-white/20 items-center justify-center mr-3">
+                          <FontAwesome name="plus" size={18} color="white" />
+                        </View>
+                        <Text className="text-lg font-bold text-white">
+                          新建单词本
+                        </Text>
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
+
+                <View className="flex-row items-center justify-between mb-3">
+                  <Text className="text-sm font-semibold text-gray-900 dark:text-white">
+                    我的单词本 ({total})
+                  </Text>
+                  {editMode && (
+                    <TouchableOpacity onPress={handleSelectAll} className="px-3 py-1">
+                      <Text className="text-blue-600 dark:text-blue-400 text-sm font-medium">
+                        {selectedIds.size === collections.length ? '取消全选' : '全选'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </View>
+          }
+          ListFooterComponent={() => (
+            <>
+              {loadingMore ? (
+                <View className="py-6 items-center justify-center">
+                  <ActivityIndicator size="small" color="#3b82f6" />
+                </View>
+              ) : collections.length > 0 && collections.length >= total ? (
+                <View className="py-6 items-center justify-center">
+                  <Text className="text-xs text-gray-400">已经到底啦</Text>
+                </View>
+              ) : null}
+
+              {!editMode && collections.length > 0 && (
+                <View className="px-6 mt-4 mb-4">
+                  <View className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-5 border border-blue-100 dark:border-blue-800/50">
+                    <View className="flex-row items-center mb-3">
+                      <FontAwesome name="lightbulb-o" size={18} color="#3B82F6" />
+                      <Text className="text-base font-semibold text-blue-600 dark:text-blue-400 ml-2">
+                        学习小贴士
+                      </Text>
+                    </View>
+                    <Text className="text-sm text-blue-600/80 dark:text-blue-400/80 leading-5">
+                      长按单词本可以进入编辑模式，进行批量管理。建议定期复习已学单词，巩固记忆效果。
+                    </Text>
+                  </View>
+                </View>
+              )}
             </>
           )}
-
-          {ListFooter()}
-        </View>
-
-        {/* Tips Section */}
-        {!editMode && collections.length > 0 && (
-          <View className="px-6 mt-4 mb-20">
-            <View className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-5 border border-blue-100 dark:border-blue-800/50">
-              <View className="flex-row items-center mb-3">
-                <FontAwesome name="lightbulb-o" size={18} color="#3B82F6" />
-                <Text className="text-base font-semibold text-blue-600 dark:text-blue-400 ml-2">
-                  学习小贴士
-                </Text>
+          ListEmptyComponent={
+            isLoading && collections.length === 0 ? (
+              <View className="py-20 items-center">
+                <ActivityIndicator size="large" color="#3b82f6" />
               </View>
-              <Text className="text-sm text-blue-600/80 dark:text-blue-400/80 leading-5">
-                长按单词本可以进入编辑模式，进行批量管理。建议定期复习已学单词，巩固记忆效果。
-              </Text>
-            </View>
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+            ) : (
+              EmptyState()
+            )
+          }
+          showsVerticalScrollIndicator={false}
+          onEndReached={onLoadMore}
+          onEndReachedThreshold={0.3}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#3b82f6"
+              colors={['#3b82f6']}
+              enabled={!editMode}
+            />
+          }
+        />
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }

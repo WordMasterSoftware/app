@@ -1,8 +1,8 @@
 import axios from 'axios';
 import useConfigStore from '../stores/useConfigStore';
 import useAuthStore from '../stores/useAuthStore';
+import useAlertStore from '../stores/useAlertStore';
 import { router } from 'expo-router';
-import { Alert } from 'react-native';
 
 const instance = axios.create({
   timeout: 30000,
@@ -40,6 +40,8 @@ instance.interceptors.response.use(
     return response.data;
   },
   (error) => {
+    const { showAlert } = useAlertStore.getState();
+
     if (error.response) {
       const { status, data } = error.response;
 
@@ -47,17 +49,15 @@ instance.interceptors.response.use(
         case 401:
           // Token expired or invalid
           useAuthStore.getState().logout();
-          // Navigate to login
-          // We can't use router directly outside of a component usually, but expo-router allows it
-          // However, to be safe, we might just rely on the store state change to trigger a redirect in the UI
-          // Or show an alert
-          Alert.alert('登录过期', '请重新登录', [
-             { text: 'OK', onPress: () => router.replace('/auth/login') }
+          showAlert('登录过期', '请重新登录', [
+            { text: '好的', onPress: () => router.replace('/auth/login') }
           ]);
           break;
 
         case 403:
-          Alert.alert('无权限', '您没有权限执行此操作');
+          showAlert('无权限', '您没有权限执行此操作', [
+            { text: '好的', onPress: () => useAlertStore.getState().hideAlert() }
+          ]);
           break;
 
         case 404:
@@ -66,14 +66,20 @@ instance.interceptors.response.use(
           break;
 
         case 500:
-          Alert.alert('服务器错误', '请稍后重试');
+          showAlert('服务器错误', '请稍后重试', [
+            { text: '好的', onPress: () => useAlertStore.getState().hideAlert() }
+          ]);
           break;
 
         default:
-          Alert.alert('错误', data?.message || '请求失败');
+          showAlert('错误', data?.message || '请求失败', [
+            { text: '好的', onPress: () => useAlertStore.getState().hideAlert() }
+          ]);
       }
     } else if (error.request) {
-      Alert.alert('网络错误', '无法连接到服务器，请检查网络或配置');
+      showAlert('网络错误', '无法连接到服务器，请检查网络或配置', [
+        { text: '好的', onPress: () => useAlertStore.getState().hideAlert() }
+      ]);
     } else {
       console.error('Request setup error:', error.message);
     }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Linking, Switch, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import useAuthStore from '@/stores/useAuthStore';
@@ -81,7 +82,8 @@ export default function ProfileScreen() {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100 dark:bg-black" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-blue-600 dark:bg-blue-600" edges={['top']}>
+      <StatusBar style="light" backgroundColor="#2563eb" />
       <CustomAlert
         visible={alertVisible}
         title={alertConfig.title}

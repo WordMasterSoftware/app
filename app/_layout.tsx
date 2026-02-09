@@ -10,6 +10,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import useAuthStore from '../stores/useAuthStore';
 import useConfigStore from '../stores/useConfigStore';
+import useAlertStore from '../stores/useAlertStore';
+import CustomAlert from '@/components/common/CustomAlert';
 
 import { useColorScheme } from '@/components/useColorScheme';
 
@@ -54,6 +56,7 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const { loadToken, isAuthenticated } = useAuthStore();
   const { isConfigured } = useConfigStore();
+  const { visible: alertVisible, config: alertConfig, hideAlert } = useAlertStore();
   const segments = useSegments();
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
@@ -109,6 +112,13 @@ function RootLayoutNav() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <CustomAlert
+          visible={alertVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttons={alertConfig.buttons}
+          onClose={hideAlert}
+        />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="auth" options={{ headerShown: false }} />

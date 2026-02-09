@@ -3,19 +3,18 @@ import CustomAlert, { AlertButton } from '@/components/common/CustomAlert';
 import useCollectionStore from '@/stores/useCollectionStore';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, RefreshControl, FlatList, Text, TouchableOpacity, View, Platform } from 'react-native';
-import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ActivityIndicator, RefreshControl, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function StudyScreen() {
   const router = useRouter();
-  const { collections, fetchCollections, deleteCollection, isLoading, total, page } = useCollectionStore();
+  const { collections, fetchCollections, deleteCollection, isLoading, total } = useCollectionStore();
 
   // Local state for UI interactions
   const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
@@ -28,8 +27,13 @@ export default function StudyScreen() {
     buttons?: AlertButton[];
   }>({ title: '' });
 
-  // Refs to track open swipeables
-  const openSwipeableRefs = useRef<Map<string, Swipeable>>(new Map());
+  // Pagination state - managed locally to avoid store sync issues
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Track if initial fetch has been done
+  const hasFetchedRef = useRef(false);
 
   const showAlert = (title: string, message?: string, buttons?: AlertButton[]) => {
     setAlertConfig({ title, message, buttons });
@@ -55,7 +59,14 @@ export default function StudyScreen() {
   // Initial load
   useFocusEffect(
     useCallback(() => {
-      fetchCollections(1, 20, false);
+      // Only fetch on first focus to prevent infinite refresh
+      if (!hasFetchedRef.current) {
+        hasFetchedRef.current = true;
+        fetchCollections(1, 20, false).then((response: any) => {
+          setCurrentPage(1);
+          setHasMore((response?.collections?.length || 0) < (response?.total || 0));
+        });
+      }
       // Exit edit mode when screen loses focus
       return () => {
         setEditMode(false);
@@ -72,7 +83,9 @@ export default function StudyScreen() {
     setEditMode(false);
     setSelectedIds(new Set());
     try {
-      await fetchCollections(1, 20, false);
+      const response: any = await fetchCollections(1, 20, false);
+      setCurrentPage(1);
+      setHasMore((response?.collections?.length || 0) < (response?.total || 0));
     } catch (e) {
       console.error(e);
     } finally {
@@ -80,18 +93,25 @@ export default function StudyScreen() {
     }
   };
 
-  const onLoadMore = async () => {
-    if (isLoading || loadingMore || collections.length >= total) return;
+  const onLoadMore = useCallback(() => {
+    // Strict guards to prevent multiple calls
+    if (loadingMore || isLoading || refreshing || !hasMore) return;
+    if (collections.length === 0) return;
 
     setLoadingMore(true);
-    try {
-      await fetchCollections(page + 1, 20, true);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
+    const nextPage = currentPage + 1;
+
+    fetchCollections(nextPage, 20, true)
+      .then((response: any) => {
+        setCurrentPage(nextPage);
+        const totalLoaded = collections.length + (response?.collections?.length || 0);
+        setHasMore(totalLoaded < (response?.total || 0));
+      })
+      .catch((e) => console.error(e))
+      .finally(() => {
+        setLoadingMore(false);
+      });
+  }, [loadingMore, isLoading, refreshing, hasMore, collections.length, currentPage]);
 
   const handleCollectionPress = (id: string) => {
     if (editMode) {
@@ -122,28 +142,6 @@ export default function StudyScreen() {
 
   const handleCreatePress = () => {
     router.push('/collection/create');
-  };
-
-  const handleDeleteSingle = async (id: string) => {
-    // Close all swipeables first
-    openSwipeableRefs.current.forEach((ref) => ref?.close());
-
-    showAlert('删除单词本', '确定要删除这个单词本吗？', [
-      { text: '取消', style: 'cancel', onPress: () => setAlertVisible(false) },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: async () => {
-          setAlertVisible(false);
-          try {
-            await deleteCollection(id);
-            showAlert('成功', '单词本已删除', [{ text: '好的', onPress: () => setAlertVisible(false) }]);
-          } catch (error: any) {
-            showAlert('删除失败', error.message || '删除单词本时出错', [{ text: '好的', onPress: () => setAlertVisible(false) }]);
-          }
-        }
-      }
-    ]);
   };
 
   const handleBatchDelete = async () => {
@@ -207,32 +205,6 @@ export default function StudyScreen() {
     }
   };
 
-  const renderRightActions = (id: string, progress: Animated.AnimatedInterpolation<number>) => {
-    const translateX = progress.interpolate({
-      inputRange: [0, 1],
-      outputRange: [80, 0],
-    });
-
-    return (
-      <Animated.View
-        style={{
-          transform: [{ translateX }],
-          flexDirection: 'row',
-          alignItems: 'center',
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => handleDeleteSingle(id)}
-          className="bg-red-500 h-full w-20 items-center justify-center"
-          style={{ borderTopRightRadius: 16, borderBottomRightRadius: 16 }}
-        >
-          <FontAwesome name="trash-o" size={20} color="white" />
-          <Text className="text-white text-xs mt-1 font-medium">删除</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  };
-
   const renderItem = ({ item }: { item: Collection }) => {
     const isSelected = selectedIds.has(item.id);
 
@@ -291,64 +263,6 @@ export default function StudyScreen() {
     );
   };
 
-  const ListHeader = () => (
-    <View className="mb-4">
-      {!editMode && (
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={handleCreatePress}
-          className="mb-5"
-          style={{
-            shadowColor: '#3B82F6',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.2,
-            shadowRadius: 12,
-            elevation: 6,
-          }}
-        >
-          <LinearGradient
-            colors={['#3B82F6', '#1D4ED8']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            className="rounded-2xl overflow-hidden"
-          >
-            <View className="p-4 flex-row items-center justify-center">
-              <View className="w-10 h-10 rounded-xl bg-white/20 items-center justify-center mr-3">
-                <FontAwesome name="plus" size={18} color="white" />
-              </View>
-              <Text className="text-lg font-bold text-white">
-                新建单词本
-              </Text>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
-
-      <View className="flex-row items-center justify-between mb-3">
-        <Text className="text-sm font-semibold text-gray-900 dark:text-white">
-          我的单词本 ({total})
-        </Text>
-        {editMode && (
-          <TouchableOpacity onPress={handleSelectAll} className="px-3 py-1">
-            <Text className="text-blue-600 dark:text-blue-400 text-sm font-medium">
-              {selectedIds.size === collections.length ? '取消全选' : '全选'}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
-
-  const ListFooter = () => (
-    <View className="py-6 items-center justify-center">
-      {loadingMore ? (
-        <ActivityIndicator size="small" color="#3b82f6" />
-      ) : collections.length > 0 && collections.length >= total ? (
-        <Text className="text-xs text-gray-400">已经到底啦</Text>
-      ) : null}
-    </View>
-  );
-
   const EmptyState = () => (
     !isLoading ? (
       <View className="items-center justify-center py-16">
@@ -361,40 +275,9 @@ export default function StudyScreen() {
     ) : null
   );
 
-  const renderItemWrapper = ({ item }: { item: Collection }) => {
-    if (editMode) {
-      return renderItem({ item });
-    }
-
-    return (
-      <Swipeable
-        ref={(ref) => {
-          if (ref) {
-            openSwipeableRefs.current.set(item.id, ref);
-          } else {
-            openSwipeableRefs.current.delete(item.id);
-          }
-        }}
-        renderRightActions={(progress) => renderRightActions(item.id, progress)}
-        overshootRight={false}
-        friction={2}
-        rightThreshold={40}
-        onSwipeableWillOpen={() => {
-          openSwipeableRefs.current.forEach((swipeableRef, key) => {
-            if (key !== item.id) {
-              swipeableRef?.close();
-            }
-          });
-        }}
-      >
-        {renderItem({ item })}
-      </Swipeable>
-    );
-  };
-
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-950" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-950" edges={['top']}>
+        <StatusBar style="auto" />
         <CustomAlert
           visible={alertVisible}
           title={alertConfig.title}
@@ -405,7 +288,7 @@ export default function StudyScreen() {
 
         <FlatList
           data={collections}
-          renderItem={renderItemWrapper}
+          renderItem={renderItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 100 }}
           ListHeaderComponent={
@@ -544,10 +427,9 @@ export default function StudyScreen() {
           showsVerticalScrollIndicator={false}
           onEndReached={onLoadMore}
           onEndReachedThreshold={0.3}
-          initialNumToRender={8}
-          maxToRenderPerBatch={8}
-          windowSize={5}
-          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={21}
           scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
@@ -560,6 +442,5 @@ export default function StudyScreen() {
           }
         />
       </SafeAreaView>
-    </GestureHandlerRootView>
   );
 }

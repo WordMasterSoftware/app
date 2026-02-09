@@ -1,5 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Dimensions, ScrollView, Text, TouchableOpacity, View, Platform } from 'react-native';
@@ -44,6 +45,7 @@ export default function ReviewScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-950" edges={['top']}>
+      <StatusBar style="auto" />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 100 }}

@@ -13,13 +13,13 @@ export default function StudyScreen() {
   const router = useRouter();
   const { collections, fetchCollections, deleteCollection, isLoading, total } = useCollectionStore();
 
-  // Local state for UI interactions
+  // UI state
   const [refreshing, setRefreshing] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
 
-  // Custom Alert State
+  // Alert state
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{
     title: string;
@@ -27,13 +27,13 @@ export default function StudyScreen() {
     buttons?: AlertButton[];
   }>({ title: '' });
 
-  // Pagination state - managed locally to avoid store sync issues
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  // Simple pagination with refs
+  const pageRef = useRef(1);
+  const hasFetchedRef = useRef(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Track if initial fetch has been done
-  const hasFetchedRef = useRef(false);
+  // Calculate if there's more data
+  const hasMore = collections.length > 0 && collections.length < total;
 
   const showAlert = (title: string, message?: string, buttons?: AlertButton[]) => {
     setAlertConfig({ title, message, buttons });
@@ -56,18 +56,14 @@ export default function StudyScreen() {
     return `${Math.floor(diffDays / 365)}年前`;
   };
 
-  // Initial load
+  // Initial load - only once
   useFocusEffect(
     useCallback(() => {
-      // Only fetch on first focus to prevent infinite refresh
       if (!hasFetchedRef.current) {
         hasFetchedRef.current = true;
-        fetchCollections(1, 20, false).then((response: any) => {
-          setCurrentPage(1);
-          setHasMore((response?.collections?.length || 0) < (response?.total || 0));
-        });
+        pageRef.current = 1;
+        fetchCollections(1, 20, false);
       }
-      // Exit edit mode when screen loses focus
       return () => {
         setEditMode(false);
         setSelectedIds(new Set());
@@ -76,16 +72,15 @@ export default function StudyScreen() {
   );
 
   const onRefresh = async () => {
-    // Prevent refresh when in edit mode
-    if (editMode) return;
+    if (editMode || loadingMore) return;
 
     setRefreshing(true);
     setEditMode(false);
     setSelectedIds(new Set());
+    pageRef.current = 1;
+
     try {
-      const response: any = await fetchCollections(1, 20, false);
-      setCurrentPage(1);
-      setHasMore((response?.collections?.length || 0) < (response?.total || 0));
+      await fetchCollections(1, 20, false);
     } catch (e) {
       console.error(e);
     } finally {
@@ -93,25 +88,22 @@ export default function StudyScreen() {
     }
   };
 
-  const onLoadMore = useCallback(() => {
-    // Strict guards to prevent multiple calls
-    if (loadingMore || isLoading || refreshing || !hasMore) return;
-    if (collections.length === 0) return;
+  // Manual load more - triggered by button press
+  const onLoadMore = async () => {
+    if (loadingMore || isLoading || !hasMore) return;
 
     setLoadingMore(true);
-    const nextPage = currentPage + 1;
+    const nextPage = pageRef.current + 1;
 
-    fetchCollections(nextPage, 20, true)
-      .then((response: any) => {
-        setCurrentPage(nextPage);
-        const totalLoaded = collections.length + (response?.collections?.length || 0);
-        setHasMore(totalLoaded < (response?.total || 0));
-      })
-      .catch((e) => console.error(e))
-      .finally(() => {
-        setLoadingMore(false);
-      });
-  }, [loadingMore, isLoading, refreshing, hasMore, collections.length, currentPage]);
+    try {
+      await fetchCollections(nextPage, 20, true);
+      pageRef.current = nextPage;
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const handleCollectionPress = (id: string) => {
     if (editMode) {
@@ -392,7 +384,14 @@ export default function StudyScreen() {
                 <View className="py-6 items-center justify-center">
                   <ActivityIndicator size="small" color="#3b82f6" />
                 </View>
-              ) : collections.length > 0 && collections.length >= total ? (
+              ) : hasMore ? (
+                <TouchableOpacity
+                  onPress={onLoadMore}
+                  className="py-4 mx-6 mb-4 bg-gray-100 dark:bg-slate-800 rounded-xl items-center justify-center"
+                >
+                  <Text className="text-sm text-gray-600 dark:text-gray-400 font-medium">加载更多</Text>
+                </TouchableOpacity>
+              ) : collections.length > 0 ? (
                 <View className="py-6 items-center justify-center">
                   <Text className="text-xs text-gray-400">已经到底啦</Text>
                 </View>
@@ -425,8 +424,7 @@ export default function StudyScreen() {
             )
           }
           showsVerticalScrollIndicator={false}
-          onEndReached={onLoadMore}
-          onEndReachedThreshold={0.3}
+          scrollEventThrottle={16}
           initialNumToRender={15}
           maxToRenderPerBatch={10}
           windowSize={21}
